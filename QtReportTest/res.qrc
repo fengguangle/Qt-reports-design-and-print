@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>report_template.html</file>
+    </qresource>
+</RCC>

@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QPaintEngine>
+#include <QPrintEngine>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -10,10 +12,18 @@ MainWindow::MainWindow(QWidget *parent) :
     printer=new QPrinter();
     printer->setOutputFormat(QPrinter::NativeFormat);
     printer->setPaperSize(QPrinter::A4);
-    printer->newPage();
+    ted->setPageSize(printer->pageSizeMM());
 
     printDlg=new QPrintDialog(printer);
     pageDlg=new QPageSetupDialog(printer);
+
+    preview = new QPrintPreviewWidget (printer,this);
+
+    this->ui->verticalLayout_preview->addWidget(preview);
+    preview->setZoomMode(QPrintPreviewWidget::FitInView);
+    connect(preview, SIGNAL(paintRequested(QPrinter*)),this,SLOT(printPreview2(QPrinter *)));//关联打印预览的内容
+    preview->show();
+
     UpdateDoc();
 }
 
@@ -27,6 +37,7 @@ void MainWindow::UpdateDoc()
     ui->textBrowser->clear();
     ted->setHtml(getHtmlStr());
     ui->textBrowser->setDocument(ted);
+    preview->updatePreview();
 }
 
 void MainWindow::on_lineEdit_id_textChanged(const QString &arg1)
@@ -64,7 +75,6 @@ void MainWindow::on_pushButton_priview_clicked()
     pd = new QPrintPreviewDialog(printer);
     connect(pd,SIGNAL(paintRequested(QPrinter*)),this,SLOT(printPreview(QPrinter*)));
     pd->resize(600,800);
-//  pd->move(510,0);
     pd->exec();
     delete pd;
 }
@@ -79,6 +89,7 @@ void MainWindow::printPreview(QPrinter *p)
 void MainWindow::on_pushButton_pagesetup_clicked()
 {
     pageDlg->exec();
+    preview->updatePreview();
 }
 
 void MainWindow::on_pushButton_printsetup_clicked()
@@ -88,76 +99,12 @@ void MainWindow::on_pushButton_printsetup_clicked()
 
 QString MainWindow::getHtmlStr()
 {
-    m_strPeintHtml=QString("<p align=\"center\">\
-            <span style=\"font-size: 24px;\"><strong><span style=\"font-family: 微软雅黑,Microsoft YaHei;\">报表标题</span></strong></span>\
-        </p>\
-        <p align=\"right\">\
-            打印时间：%1\
-        </p>\
-        <p>\
-            <span style=\"font-size: 20px;\"><strong><span style=\"font-family: 微软雅黑,Microsoft YaHei;\">基本信息</span></strong></span>\
-        </p>\
-        <hr/>\
-        <table width=\"595\">\
-            <tbody>\
-                <tr class=\"firstRow\">\
-                    <td style=\"border-width: 1px; border-style: solid;\" width=\"261\" valign=\"top\">\
-                        <span style=\"font-family: 微软雅黑,Microsoft YaHei; font-size: 18px;\">ID：%2<br/></span>\
-                    </td>\
-                    <td style=\"border-width: 1px; border-style: solid;\" width=\"261\" valign=\"top\">\
-                        <span style=\"font-family: 微软雅黑,Microsoft YaHei; font-size: 18px;\">姓名：%3<br/></span>\
-                    </td>\
-                    <td style=\"border-width: 1px; border-style: solid;\" width=\"261\" valign=\"top\">\
-                        <span style=\"font-family: 微软雅黑,Microsoft YaHei; font-size: 18px;\">性别：%4<br/></span>\
-                    </td>\
-                </tr>\
-                <tr>\
-                    <td style=\"border-width: 1px; border-style: solid;\" width=\"261\" valign=\"top\">\
-                        <span style=\"font-family: 微软雅黑,Microsoft YaHei; font-size: 18px;\">年龄：%5<br/></span>\
-                    </td>\
-                    <td rowspan=\"1\" colspan=\"2\" style=\"border-width: 1px; border-style: solid;\" valign=\"top\">\
-                        <span style=\"font-family: 微软雅黑,Microsoft YaHei; font-size: 18px;\">联系电话：%6<br/></span>\
-                    </td>\
-                </tr>\
-            </tbody>\
-        </table>\
-        <hr/>\
-            <p>\
-                <span style=\"font-family: 微软雅黑,Microsoft YaHei;\"><strong><span style=\"font-size: 20px;\">备注</span></strong></span>\
-            </p>\
-            <table>\
-                <tbody>\
-                    <tr class=\"firstRow\">\
-                        <td style=\"word-break: break-all;\" width=\"824\" valign=\"top\">\
-                            <span style=\"font-size: 18px; font-family: 微软雅黑,Microsoft YaHei;\">%7</span><br/>\
-                        </td>\
-                    </tr>\
-                </tbody>\
-            </table>\
-            <hr/>\
-        <p>\
-            <strong><span style=\"font-size: 20px; font-family: 微软雅黑,Microsoft YaHei;\">图片</span></strong>\
-        </p>\
-        <table>\
-            <tbody>\
-                <tr class=\"firstRow\">\
-                    <td width=\"200\" valign=\"middle\" align=\"center\">\
-                        <img src=\"%8\" title=\"\" alt=\"demo.jpg\" width=\"200\" height=\"150\"/>\
-                    </td>\
-                    <td width=\"200\" valign=\"middle\" align=\"center\">\
-                        <img src=\"%9\" title=\"\" alt=\"demo.jpg\" width=\"200\" height=\"150\"/>\
-                    </td>\
-                </tr>\
-                <tr>\
-                    <td style=\"word-break: break-all;\" width=\"261\" valign=\"middle\" align=\"center\">\
-                        <span style=\"font-size: 18px; font-family: 微软雅黑,Microsoft YaHei;\">图1<br/></span>\
-                    </td>\
-                    <td style=\"word-break: break-all;\" width=\"261\" valign=\"middle\" align=\"center\">\
-                        <span style=\"font-size: 18px; font-family: 微软雅黑,Microsoft YaHei;\">图2<br/></span>\
-                    </td>\
-                </tr>\
-            </tbody>\
-        </table>")
+    QFile x(":/report_template.html");
+    x.open(QIODevice::ReadOnly);
+    QTextStream in(&x);
+    in.setCodec("UTF-8"); //注意编码
+    QString html = in.readAll();
+    m_strPeintHtml=QString(html)
             .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"))
             .arg(ui->lineEdit_id->text())
             .arg(ui->lineEdit_name->text())
@@ -167,7 +114,8 @@ QString MainWindow::getHtmlStr()
             .arg(ui->textEdit_conclusion->toPlainText())
             .arg(ui->lineEdit_pic1->text())
             .arg(ui->lineEdit_pic2->text());
-            return m_strPeintHtml;
+
+    return m_strPeintHtml;
 }
 
 void MainWindow::printPainter(bool isPDF,QString id,QString name,QString gender, QString age,QString mobile,QString con,QString spic1,QString spic2)
@@ -298,7 +246,8 @@ void MainWindow::printPainter(bool isPDF,QString id,QString name,QString gender,
 
 void MainWindow::on_pushButton_print_clicked()
 {
-    ted->print(printer);
+    //ted->print(printer);
+    preview->print();
 }
 
 void MainWindow::on_pushButton_paintprint_clicked()
@@ -313,6 +262,18 @@ void MainWindow::on_pushButton_paintprint_pdf_clicked()
     printPainter(true,ui->lineEdit_id->text(),ui->lineEdit_name->text(),ui->lineEdit_gender->text()
                  ,ui->lineEdit_age->text(),ui->lineEdit_mobile->text(),ui->textEdit_conclusion->toPlainText()
                  ,ui->lineEdit_pic1->text(),ui->lineEdit_pic2->text());
+}
+//widget 预览
+void MainWindow::printPreview2(QPrinter *p)
+{
+//    QTextDocument *ted = new QTextDocument;
+//    //ted->setPageSize(QSizeF(400,800));
+//    ted->setHtml(getHtmlStr());
+    ted->print(p);
+//    ui->textBrowser->print(p);
+//    ui->textBrowser->print(p);
+//    qDebug()<<p->paintEngine()->type();
+   // delete ted;
 }
 
 QString MainWindow::getPicFile()

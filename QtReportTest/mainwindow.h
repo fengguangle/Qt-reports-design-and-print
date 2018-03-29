@@ -61,6 +61,8 @@ private slots:
 
     void on_pushButton_paintprint_pdf_clicked();
 
+    void printPreview2(QPrinter *p);
+
 private:
     Ui::MainWindow *ui;
 
@@ -71,6 +73,7 @@ private:
     QPrintDialog *printDlg;
     QPageSetupDialog *pageDlg;
     QPrintPreviewDialog *pd;
+    QPrintPreviewWidget *preview;
     void UpdateDoc();
     void printPainter(bool isPDF,QString id,QString name,QString gender, QString age,QString mobile,QString con,QString spic1,QString spic2);
     QString getPicFile();
